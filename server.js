@@ -21,10 +21,6 @@ async function createServer() {
         authorization,
       };
     },
-    onExecute: ({ request }) => {
-      console.log('Executor is making a request to:', request.url);
-      console.log('Request body:', request.body);
-    },
   });
 
   // Create Apollo Server instance
@@ -52,7 +48,7 @@ async function createServer() {
       },
     ],
     formatError: (error) => {
-      console.error('Detailed error:', error);
+      console.error('Detailed error:', error.extensions);
       return error;
     },
   });
@@ -63,15 +59,7 @@ async function createServer() {
   // Apply middleware to the Express app
   server.applyMiddleware({ app, path: '/graphql' });
 
-  // Serve static files from the React app build directory
-  app.use(express.static(path.join(__dirname, 'build')));
-
   app.use(helmet());
-
-  // Catch-all handler to serve index.html for any request that doesn't match /graphql
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
-  });
 
   // Start the server
   const PORT = process.env.PORT || 4000;
