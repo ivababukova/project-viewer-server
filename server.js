@@ -3,6 +3,8 @@ const { ApolloServer } = require('apollo-server-express');
 const { buildHTTPExecutor } = require('@graphql-tools/executor-http');
 const { schemaFromExecutor } = require('@graphql-tools/wrap');
 const helmet = require('helmet');
+const { fetch } = require('cross-fetch');
+const { print } = require('graphql');
 
 const path = require('path');
 
@@ -23,12 +25,50 @@ async function createServer() {
     },
   });
 
+
+  const customHttpExecutor = async (executorRequest) => {
+    const { document, context } = executorRequest;
+    const query = print(document);
+    const variables = context.variables;
+    console.log('Sending request to remote API:');
+    console.log('Query:', query);
+    console.log('Variables:', variables);
+    console.log('Context:', context);
+
+    try {
+      const response = await fetch('https://backboard.railway.app/graphql/v2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': context.authorization,
+        },
+        body: JSON.stringify({ query, variables }),
+      });
+
+      const responseData = await response.json();
+      console.log('Response from remote API:', responseData);
+
+      if (responseData.errors) {
+        console.error('Errors from remote API:', responseData.errors);
+      }
+
+      return responseData;
+    } catch (error) {
+      console.error('Error in HTTP executor:', error);
+      throw error;
+    }
+  };
+
   // Create Apollo Server instance
   const server = new ApolloServer({
     schema: await schemaFromExecutor(remoteExecutor),
-    executor: runtimeExecutor,
+    executor: async ({ document, context }) => {
+      return customHttpExecutor({ document, context });
+    },
+    // executor: runtimeExecutor,
     context: ({ req }) => ({
       authorization: req.headers.authorization || '',
+      variables: req.body.variables,
     }),
     introspection: true, // Enable introspection for development/testing
     playground: true,    // Enable GraphQL playground
