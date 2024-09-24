@@ -71,8 +71,9 @@ async function createServer() {
 
   // Start the server
   const PORT = process.env.PORT || 4000;
+  const DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN || "http://localhost";
   app.listen(PORT, () => {
-    console.log(`🚀 Server ready at http://localhost:${PORT}${server.graphqlPath}`);
+    console.log(`🚀 Server ready at ${DOMAIN}:${PORT}${server.graphqlPath}`);
   });
 }
 
