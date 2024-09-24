@@ -6,37 +6,22 @@ const helmet = require('helmet');
 const { fetch } = require('cross-fetch');
 const { print } = require('graphql');
 
-const path = require('path');
+const REMOTE_API_URL = 'https://backboard.railway.app/graphql/v2'
 
 async function createServer() {
   const app = express();
 
   const remoteExecutor = buildHTTPExecutor({
-    endpoint: 'https://backboard.railway.app/graphql/v2',
+    endpoint: REMOTE_API_URL,
   })
-
-  const runtimeExecutor = buildHTTPExecutor({
-    endpoint: 'https://backboard.railway.app/graphql/v2',
-    headers: (executorRequest) => {
-      const { authorization } = executorRequest.context;
-      return {
-        authorization,
-      };
-    },
-  });
-
 
   const customHttpExecutor = async (executorRequest) => {
     const { document, context } = executorRequest;
     const query = print(document);
     const variables = context.variables;
-    console.log('Sending request to remote API:');
-    console.log('Query:', query);
-    console.log('Variables:', variables);
-    console.log('Context:', context);
 
     try {
-      const response = await fetch('https://backboard.railway.app/graphql/v2', {
+      const response = await fetch(REMOTE_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,34 +44,17 @@ async function createServer() {
     }
   };
 
-  // Create Apollo Server instance
   const server = new ApolloServer({
     schema: await schemaFromExecutor(remoteExecutor),
     executor: async ({ document, context }) => {
       return customHttpExecutor({ document, context });
     },
-    // executor: runtimeExecutor,
     context: ({ req }) => ({
       authorization: req.headers.authorization || '',
       variables: req.body.variables,
     }),
-    introspection: true, // Enable introspection for development/testing
-    playground: true,    // Enable GraphQL playground
-    plugins: [
-      {
-        requestDidStart(requestContext) {
-          console.log("Request operation name: ", requestContext.request.http.headers);
-          console.log('Request headers: ', requestContext.request.headers);
-          console.log('Request variables: ', requestContext.request.variables);
-          console.log('Request query: ', requestContext.request.query);
-          return {
-            didEncounterErrors(requestContext) {
-              console.error('An error occurred:', requestContext.errors);
-            },
-          };
-        },
-      },
-    ],
+    introspection: true,
+    playground: true,
     formatError: (error) => {
       console.error('Detailed error:', error.extensions);
       return error;
