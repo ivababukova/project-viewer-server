@@ -5,11 +5,32 @@ const { schemaFromExecutor } = require('@graphql-tools/wrap');
 const helmet = require('helmet');
 const { fetch } = require('cross-fetch');
 const { print } = require('graphql');
+const cors = require('cors');
 
 const REMOTE_API_URL = 'https://backboard.railway.app/graphql/v2'
+const CLIENT_URL_PRODUCTION = 'https://railway-project-viewer-production.up.railway.app'
+const CLIENT_URL_DEVELOPMENT = 'http://localhost:3000'
+
+const allowedOrigins = [CLIENT_URL_DEVELOPMENT, CLIENT_URL_PRODUCTION]
 
 async function createServer() {
   const app = express();
+
+  // Use CORS middleware
+  app.use(
+    cors({
+      origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          callback(new Error('CORS policy does not allow access from the specified Origin.'), false);
+        }
+      },
+      credentials: true, // Enable if you need to send cookies or authorization headers
+    })
+  );
 
   const remoteExecutor = buildHTTPExecutor({
     endpoint: REMOTE_API_URL,
